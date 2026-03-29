@@ -283,7 +283,7 @@ class GPT2LMHeadModel(nn.Module):
         # Mask tokens beyond top_p cumulative probability
         cumsum = torch.cumsum(sorted_p, dim=-1)
         mask = cumsum - sorted_p > top_p
-        sorted_p[mask] = 0.0
+        sorted_p = sorted_p.masked_fill(mask, 0.0)
 
         # Sample from the remaining distribution
         sampled = torch.multinomial(sorted_p, num_samples=1)  # [B, 1] index into sorted
