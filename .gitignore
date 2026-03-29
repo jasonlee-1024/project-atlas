@@ -27,7 +27,7 @@ ENV/
 wandb/
 runs/
 outputs/
-# checkpoints/
+checkpoints/
 tb_profiler*/
 *.pt.trace.json
 events.out.tfevents.*
