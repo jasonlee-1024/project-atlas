@@ -187,7 +187,7 @@ class GPT2LMHeadModel(nn.Module):
 
         # Load checkpoint weights
         if bin_path:
-            state_dict = torch.load(bin_path, weights_only=True)
+            state_dict = torch.load(bin_path, weights_only=False)
             for key in state_dict:
                 if (state_dict[key].dim() == 2
                         and key.endswith(".weight")
