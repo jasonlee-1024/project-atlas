@@ -150,7 +150,6 @@ class GPT2TransformerBlock(nn.Module):
         mlp = self.mlp(self.ln_2(x))
         x = x+mlp
 
-        
         return x, kv
 
 
