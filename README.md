@@ -7,7 +7,7 @@ A collection of projects and homework assignments from my studies at Columbia Un
 ```
 project-atlas/
 ├── nlp/        # Natural Language Processing
-│   ├── hw1/
+│   ├── hw1/    # BERT and Word2Vec
 │   └── hw2/    # GPT-2 from scratch + fine-tuning on 20 Newsgroups
 ├── hpml/       # High Performance Machine Learning
 │   ├── hw1/
@@ -20,6 +20,7 @@ project-atlas/
 
 ## Highlights
 
+- **NLP HW1**: Word2Vec embeddings and BERT fine-tuning experiments.
 - **NLP HW2**: Implemented GPT-2 from scratch in PyTorch, including KV caching, nucleus sampling, and fine-tuned a classifier on 20 Newsgroups achieving >65% validation accuracy.
 - **HPC HW1**: Roofline model analysis and Arithmetic Intensity measurements to understand hardware performance bottlenecks.
 - **HPC HW2**: Deep dive into matrix multiplication as a core operation inside transformer architectures.
