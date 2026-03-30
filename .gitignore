@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ML / Training artifacts
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+wandb/
+runs/
+outputs/
+checkpoints/
+tb_profiler*/
+*.pt.trace.json
+events.out.tfevents.*
+
+# C / C++ build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.out
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log
+logs/

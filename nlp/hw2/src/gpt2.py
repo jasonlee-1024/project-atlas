@@ -49,6 +49,8 @@ class GPT2Config:
 class CausalLMOutput:
     """Output class for causal language modeling. Contains the logits for all input tokens."""
     logits: Tensor
+    past_key_values: Optional[List[Tuple[Tensor, Tensor]]] = None
+    hidden_states: Optional[Tensor] = None
 
 
 @dataclass
@@ -102,7 +104,35 @@ class GPT2AttentionBlock(nn.Module):
     ) -> Tuple[Tensor, Tuple[Tensor, Tensor]]:
         B, S, D = x.shape
 
-        # Calculate q, k, v
+        #======== DECODE ========#
+        if past_kv != None:
+                        
+            # Get Q, K, V
+            q, k, v = self.c_attn(x).split(D, dim=-1)  #[B, 1, 768]
+
+            q = q.view(B, 1, self.n_head, self.d_head).transpose(1, 2)  # [B, n_head, 1, d_head]
+            k = k.view(B, 1, self.n_head, self.d_head).transpose(1, 2)
+            v = v.view(B, 1, self.n_head, self.d_head).transpose(1, 2)
+
+            # Add kv cache
+            k = torch.cat([past_kv[0], k], dim=2)  # [B, n_head, past_len+1, d_head]
+            v = torch.cat([past_kv[1], v], dim=2)
+
+            # Compute attention scores
+            scores = q @ k.transpose(-1, -2) / math.sqrt(self.d_head)
+            
+            # Softmax over key dimension
+            scores = F.softmax(scores, dim=-1)
+            out = scores @ v
+
+            # Weighted sum over values
+            out = out.transpose(1, 2).contiguous().view(B, 1, D)
+            out = self.c_proj(out)
+
+            return out, (k, v)
+        
+        #======== Prefill ========#
+        # Calculate Q, K, V
         q, k, v = self.c_attn(x).split(D, dim=-1)  #[B, S, 768]
 
         # Reshape Q, K, V into multiple head
@@ -150,7 +180,6 @@ class GPT2TransformerBlock(nn.Module):
         mlp = self.mlp(self.ln_2(x))
         x = x+mlp
 
-        
         return x, kv
 
 
@@ -188,7 +217,7 @@ class GPT2LMHeadModel(nn.Module):
 
         # Load checkpoint weights
         if bin_path:
-            state_dict = torch.load(bin_path, weights_only=True)
+            state_dict = torch.load(bin_path, weights_only=False)
             for key in state_dict:
                 if (state_dict[key].dim() == 2
                         and key.endswith(".weight")
@@ -215,21 +244,53 @@ class GPT2LMHeadModel(nn.Module):
         """
 
         wte = self.wte(input_ids)
-        position_ids = torch.arange(input_ids.shape[1], device=input_ids.device)                                              
+        past_len = past_key_values[0][0].size(2) if past_key_values else 0                                                    
+        position_ids = torch.arange(past_len, past_len + input_ids.shape[1], device=input_ids.device)                                        
         wpe = self.wpe(position_ids)  
 
         x = wte + wpe
+        new_past_key_values = []
         for i in range(self.config.n_layer):
-            x, kv = self.h[i](x, past_key_values[i] if past_key_values else None)   
-            if past_key_values is not None:
-                past_key_values[i] = kv
-        
+            x, kv = self.h[i](x, past_key_values[i] if past_key_values else None)
+            new_past_key_values.append(kv)
+
         x = self.ln_f(x)
 
-        logits = x @ self.wte.weight.T 
+        logits = x @ self.wte.weight.T
 
-        return CausalLMOutput(logits=logits)
+        return CausalLMOutput(logits=logits, past_key_values=new_past_key_values, hidden_states=x)
         
+    def sample_token(self, logits: Tensor, temperature: float, top_p: float) -> Tensor:
+        """
+        Sample a token from logits.
+
+        Args:
+            logits: [batch_size, vocab_size] logits for the current step
+            temperature: Sampling temperature. If 0.0, use greedy (argmax).
+            top_p: Nucleus sampling threshold.
+
+        Returns:
+            [batch_size, 1] sampled token IDs
+        """
+        
+        # Greedy
+        if temperature == 0.0:
+            return logits.argmax(dim=-1, keepdim=True)
+
+        # Nucleus sampling
+        p = torch.softmax(logits / temperature, dim=-1)
+        sorted_p, sorted_idx = torch.sort(p, dim=-1, descending=True)
+
+        # Mask tokens beyond top_p cumulative probability
+        cumsum = torch.cumsum(sorted_p, dim=-1)
+        mask = cumsum > top_p
+        mask[:, 0] = False  # always keep top token
+        sorted_p = sorted_p.masked_fill(mask, 0.0)
+
+        # Sample from the remaining distribution
+        sampled = torch.multinomial(sorted_p, num_samples=1)  # [B, 1] index into sorted
+        return sorted_idx.gather(-1, sampled)  # map back to vocab ids
+
     def generate(
         self,
         input_ids: Tensor,
@@ -256,8 +317,26 @@ class GPT2LMHeadModel(nn.Module):
         # GPT-2 does not have a stop token,
         # so you should always generate `max_new_tokens` new tokens 
         # for all the input sequences in the batch.
+
+        # Prefill
+        output = self.forward(input_ids)
+        next_token = self.sample_token(output.logits[:, -1, :],
+                                       temperature=temperature,
+                                       top_p=top_p)
+        input_ids = torch.cat([input_ids, next_token], dim=-1)
+
+        # Decode
+        for _ in range(max_new_tokens-1):
+            output = self.forward(next_token, past_key_values=output.past_key_values)
+            next_token = self.sample_token(output.logits[:, -1, :],
+                                       temperature=temperature,
+                                       top_p=top_p)
+
+            input_ids = torch.cat([input_ids, next_token], dim=-1)
+        
         
         return ModelOutput(sequences=input_ids)
+
 
 
 class GPT2ForSequenceClassification(nn.Module):
@@ -298,6 +377,13 @@ class GPT2ForSequenceClassification(nn.Module):
         # You can reuse the GPT2LMHeadModel defined above as the base model,
         # and add a classification head on top of it.
         # You should also reuse GPT2LMHeadModel's weights to speed up training if possible.
+        
+        self.lm = GPT2LMHeadModel(config=config, bin_path=lm_bin_path)
+        self.classification = nn.Linear(config.d_model, config.num_labels)
+
+        if classifier_bin_path:
+            state_dict = torch.load(classifier_bin_path, weights_only=False)
+            self.load_state_dict(state_dict)
 
     def forward(self, input_ids: Tensor) -> SequenceClassifierOutput:
         """
@@ -314,5 +400,8 @@ class GPT2ForSequenceClassification(nn.Module):
         # The output logits should be of shape (batch_size, num_labels),
         # where num_labels is specified in the GPT2Config,
         # and the logits contain the classification scores for each label class.
-        
+
+        lm_output = self.lm.forward(input_ids=input_ids)
+        logits = self.classification(lm_output.hidden_states[:, -1, :])
+
         return SequenceClassifierOutput(logits=logits)
