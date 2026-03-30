@@ -50,6 +50,7 @@ class CausalLMOutput:
     """Output class for causal language modeling. Contains the logits for all input tokens."""
     logits: Tensor
     past_key_values: Optional[List[Tuple[Tensor, Tensor]]] = None
+    hidden_states: Optional[Tensor] = None
 
 
 @dataclass
@@ -257,7 +258,7 @@ class GPT2LMHeadModel(nn.Module):
 
         logits = x @ self.wte.weight.T
 
-        return CausalLMOutput(logits=logits, past_key_values=new_past_key_values)
+        return CausalLMOutput(logits=logits, past_key_values=new_past_key_values, hidden_states=x)
         
     def sample_token(self, logits: Tensor, temperature: float, top_p: float) -> Tensor:
         """
@@ -376,6 +377,13 @@ class GPT2ForSequenceClassification(nn.Module):
         # You can reuse the GPT2LMHeadModel defined above as the base model,
         # and add a classification head on top of it.
         # You should also reuse GPT2LMHeadModel's weights to speed up training if possible.
+        
+        self.lm = GPT2LMHeadModel(config=config, bin_path=lm_bin_path)
+        self.classification = nn.Linear(config.d_model, config.num_labels)
+
+        if classifier_bin_path:
+            state_dict = torch.load(classifier_bin_path, weights_only=False)
+            self.load_state_dict(state_dict)
 
     def forward(self, input_ids: Tensor) -> SequenceClassifierOutput:
         """
@@ -392,5 +400,8 @@ class GPT2ForSequenceClassification(nn.Module):
         # The output logits should be of shape (batch_size, num_labels),
         # where num_labels is specified in the GPT2Config,
         # and the logits contain the classification scores for each label class.
-        
+
+        lm_output = self.lm.forward(input_ids=input_ids)
+        logits = self.classification(lm_output.hidden_states[:, -1, :])
+
         return SequenceClassifierOutput(logits=logits)
