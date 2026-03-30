@@ -200,7 +200,7 @@ class GPT2LMHeadModel(nn.Module):
 Once you have implemented the architecture, run the following to verify it loads the checkpoint and performs a forward pass without errors:
 
 ```bash
-pytest tests/hw2_test.py::test_loads_and_forward_pass -v
+python -m pytest tests/hw2_test.py::test_loads_and_forward_pass -v
 ```
 
 #### Hints
@@ -251,7 +251,7 @@ In this part, you will verify that your implementation is numerically consistent
 Run the following test to check numerical correctness:
 
 ```bash
-pytest tests/hw2_test.py::test_probability_tolerance -v
+python -m pytest tests/hw2_test.py::test_probability_tolerance -v
 ```
 
 If the test fails, debug and fix any discrepancies until it passes. If your Part 1 (a) implementation is already correct, you may pass this test without any additional changes.
@@ -351,8 +351,8 @@ class GPT2LMHeadModel(nn.Module):
 After implementing `generate`, run the following tests to verify correctness:
 
 ```bash
-pytest tests/hw2_test.py::test_greedy_sampling -v
-pytest tests/hw2_test.py::test_nucleus_sampling -v
+python -m pytest tests/hw2_test.py::test_greedy_sampling -v
+python -m pytest tests/hw2_test.py::test_nucleus_sampling -v
 ```
 
 Passing both tests means you have successfully implemented auto-regressive generation with nucleus sampling and KV caching.
@@ -439,7 +439,7 @@ class GPT2ForSequenceClassification(nn.Module):
 After implementing `GPT2ForSequenceClassification`, run the following test to verify it loads and runs correctly:
 
 ```bash
-pytest tests/hw2_test.py::test_classifier_loads_and_forward_pass -v
+python -m pytest tests/hw2_test.py::test_classifier_loads_and_forward_pass -v
 ```
 
 ---
@@ -481,7 +481,7 @@ Include a report in PDF format named `report.pdf` at the **root level of the pro
 Once you have completed all implementation and model training, as well as the report, run the full test suite to confirm your work one last time:
 
 ```bash
-pytest tests/hw2_test.py -v
+python -m pytest tests/hw2_test.py -v
 ```
 
 There are no hidden test cases — passing all tests in `hw2_test.py` means you have successfully completed all required components of this assignment.
