@@ -86,12 +86,6 @@ export OPENAI_API_KEY=<assigned_openai_api_key>
 
 > **Note on API key usage:**
 
-> <assigned_openai_api_key> = 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
-
-> The provided key supports only `gpt-4o` and `gpt-4o-mini` model.  The expected total cost for completing this assignment (Parts 1–3) is **under $1**.
->
-> **Please be mindful of your usage. Do not share with other people outside the class.**  Avoid running large-scale experiments or repeated bulk evaluations with the key.
->
 > You are encouraged to use **your own OpenAI API key** instead of the shared one.  When many students use the same key simultaneously (especially just before the deadline!!!), you may hit rate limits that slow or block your requests.  Using your own key avoids this and also lets you experiment with other models or providers (e.g., Anthropic Claude, Google Gemini) during development.
 >
 > **Important:** The autograder always evaluates your agent against OpenAI (`gpt-4o-mini`), so your implementation must be compatible with that model regardless of which key or model you use locally.
